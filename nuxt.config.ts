@@ -1,5 +1,9 @@
 // nuxt.config.ts
 export default defineNuxtConfig({
+  app: {
+    baseURL: '/formulario/', // ¡Esto es vital!
+    buildAssetsDir: '/_nuxt/', 
+  },
   // Mantiene la estructura de carpeta app/
   future: { 
     compatibilityVersion: 4 
