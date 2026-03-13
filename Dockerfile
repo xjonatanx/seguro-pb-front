@@ -23,14 +23,14 @@ WORKDIR /app
 
 # Definir variables de entorno
 ENV NODE_ENV=production
-ENV PORT=3000
+ENV PORT=3001
 ENV HOST=0.0.0.0
 
 # Copiar solo lo necesario desde el builder (la carpeta .output)
 COPY --from=builder /app/.output ./.output
 
 # Exponer el puerto
-EXPOSE 3000
+EXPOSE 3001
 
 # Comando para iniciar el servidor de Nuxt (Nitro)
 CMD ["node", ".output/server/index.mjs"]
