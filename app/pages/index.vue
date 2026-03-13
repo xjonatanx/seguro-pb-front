@@ -61,7 +61,7 @@ async function enterForm() {
   error.value = ""
   
   try {
-    const res: any = await $fetch('http://localhost:4000/api/auth/login', { 
+    const res: any = await $fetch('https://pybingenieriachile.cl/api-seguro/api/auth/login', { 
       method: 'POST', 
       body: { rut: loginForm.rut } 
     })

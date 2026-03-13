@@ -35,7 +35,7 @@ const isSuccessOpen = ref(false)
 async function fetchSubmissions() {
   loading.value = true
   try {
-    const res: any = await $fetch('http://localhost:4000/api/admin/submissions', {
+    const res: any = await $fetch('https://pybingenieriachile.cl/api-seguro/api/admin/submissions', {
       params: { 
         page: currentPage.value, 
         limit: itemsPerPage,
@@ -62,7 +62,7 @@ async function executeUpdate() {
   isConfirmOpen.value = false
   savingEdit.value = true
   try {
-    await $fetch(`http://localhost:4000/api/admin/submissions/${editForm.value.id}`, {
+    await $fetch(`https://pybingenieriachile.cl/api-seguro/api/admin/submissions/${editForm.value.id}`, {
       method: 'PUT',
       headers: { Authorization: `Bearer ${authToken.value}` },
       body: editForm.value
@@ -99,7 +99,7 @@ async function checkAdmin() {
   }
   loading.value = true; error.value = ""
   try {
-    const res: any = await $fetch('http://localhost:4000/api/auth/login-admin', {
+    const res: any = await $fetch('https://pybingenieriachile.cl/api-seguro/api/auth/login-admin', {
       method: 'POST',
       body: loginForm
     })
@@ -125,7 +125,7 @@ const formatRut = (v: string) => {
 watch(() => loginForm.rut, (n) => loginForm.rut = formatRut(n))
 
 function downloadPDF(id: number) {
-  window.open(`http://localhost:4000/api/admin/generate-pdf/${id}?token=${authToken.value}`, '_blank')
+  window.open(`https://pybingenieriachile.cl/api-seguro/api/admin/generate-pdf/${id}?token=${authToken.value}`, '_blank')
 }
 
 function logout() { authToken.value = null; authorized.value = false; navigateTo('/') }

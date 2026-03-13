@@ -43,7 +43,7 @@ const formData = reactive({
 onMounted(async () => {
   if (!userId.value) return navigateTo('/')
   try {
-    const data: any = await $fetch(`http://localhost:4000/api/submissions/${userId.value}`, {
+    const data: any = await $fetch(`https://pybingenieriachile.cl/api-seguro/api/submissions/${userId.value}`, {
       headers: {
         Authorization: `Bearer ${workerToken.value}`
       }
@@ -131,7 +131,7 @@ async function executeSave() {
   saving.value = true
   const isFinal = alertConfig.isConfirm
   try {
-    await $fetch('http://localhost:4000/api/submissions/save', {
+    await $fetch('https://pybingenieriachile.cl/api-seguro/api/submissions/save', {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${workerToken.value}` // <--- Token de seguridad
@@ -165,7 +165,7 @@ async function saveAndExit() {
   saving.value = true
   try {
     // Guardamos con finalize: false para que quede como 'draft'
-    await $fetch('http://localhost:4000/api/submissions/save', {
+    await $fetch('https://pybingenieriachile.cl/api-seguro/api/submissions/save', {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${workerToken.value}`
