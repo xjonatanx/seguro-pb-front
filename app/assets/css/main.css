@@ -1,0 +1,6 @@
+@import "tailwindcss";
+
+/* Aquí puedes añadir estilos para que se parezca al PDF */
+@layer base {
+  h1 { @apply text-2xl font-bold text-slate-800; }
+}
