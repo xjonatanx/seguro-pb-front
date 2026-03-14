@@ -247,7 +247,7 @@ watch(currentStep, async (newStep) => {
         </p>
       </div>
     </div>
-    <nav class="bg-blue-900 text-white p-5 shadow-lg mb-8 sticky top-0 z-50">
+    <nav class="bg-blue-900 text-white p-5 shadow-lg mb-8 top-0 z-50">
       <div class="max-w-3xl mx-auto flex justify-between items-center">
         <div>
           <span class="font-black text-2xl tracking-tighter italic uppercase">P&B</span>
@@ -374,7 +374,7 @@ watch(currentStep, async (newStep) => {
           <div v-if="currentStep === 3" class="space-y-6">
             <h2 class="text-xl font-black text-slate-800 uppercase border-b-2 border-blue-900 pb-2 tracking-tight">3.
               Datos Bancarios</h2>
-            <div class="space-y-4">
+            <div class="space-y-4">F
               <div><label class="label-style">Banco *</label><input v-model="formData.bank.banco" class="input-style" />
               </div>
               <div class="grid grid-cols-2 gap-4">
@@ -425,20 +425,26 @@ watch(currentStep, async (newStep) => {
         </div>
 
         <div
-          class="bg-slate-50 p-6 flex flex-col md:flex-row items-center justify-between border-t border-slate-200 gap-4">
-          <button v-if="currentStep > 1" @click="currentStep--"
-            class="text-slate-400 font-bold uppercase text-xs tracking-widest hover:text-blue-900 transition-colors">←
-            Volver</button>
-          <div v-else></div>
+          class="sticky bottom-0 bg-white/80 backdrop-blur-md p-4 md:p-6 flex flex-col md:flex-row items-center border-t border-slate-200 gap-4 transition-all">
 
-          <div class="flex gap-4 w-full md:w-auto">
-            <button @click="saveAndExit" :disabled="saving || isLocked"
-              class="flex-1 md:flex-none border-2 border-slate-200 text-slate-400 px-6 py-4 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-slate-100 transition-all">
-              {{ saving ? '...' : 'Salir y seguir después' }}
+          <div class="w-full md:w-1/4 flex justify-center md:justify-start">
+            <button v-if="currentStep > 1" @click="currentStep--"
+              class="group flex items-center gap-2 text-slate-500 font-bold uppercase text-xs tracking-widest hover:text-blue-900 transition-colors">
+              <span class="transform group-hover:-translate-x-1 transition-transform">←</span>
+              Volver
             </button>
+          </div>
+
+          <div class="flex flex-col sm:flex-row gap-3 w-full md:w-3/4 md:justify-end">
+            <button @click="saveAndExit" :disabled="saving || isLocked"
+              class="order-2 sm:order-1 flex-1 md:flex-none border-2 border-slate-200 text-slate-500 px-6 py-3.5 rounded-xl font-bold text-xs uppercase tracking-widest hover:bg-slate-50 hover:border-slate-300 disabled:opacity-50 transition-all">
+              {{ saving ? '...' : 'Guardar y salir' }}
+            </button>
+
             <button @click="handleNavigation(currentStep === 4)" :disabled="saving || isLocked"
-              class="flex-1 md:flex-none bg-blue-900 text-white px-10 py-4 rounded-2xl font-black shadow-xl hover:bg-blue-800 disabled:opacity-50 transition-all text-xs uppercase tracking-widest">
-              {{ saving ? 'PROCESANDO...' : (currentStep === 4 ? 'FINALIZAR ENVÍO' : 'GUARDAR Y SEGUIR') }}
+              class="order-1 sm:order-2 flex-1 md:flex-none bg-blue-900 text-white px-8 py-3.5 rounded-xl font-black shadow-lg shadow-blue-900/20 hover:bg-blue-800 hover:shadow-blue-900/40 disabled:opacity-50 transition-all text-xs uppercase tracking-widest">
+              <span v-if="saving">PROCESANDO...</span>
+              <span v-else>{{ currentStep === 4 ? 'Finalizar Envío' : 'Siguiente Paso' }}</span>
             </button>
           </div>
         </div>
