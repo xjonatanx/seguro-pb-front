@@ -44,10 +44,23 @@ const stopDrawing = () => {
 }
 
 const getPos = (e: MouseEvent | TouchEvent) => {
-  const rect = signaturePad.value?.getBoundingClientRect() || { left: 0, top: 0 }
+  const canvas = signaturePad.value
+  if (!canvas) return { x: 0, y: 0 }
+
+  const rect = canvas.getBoundingClientRect()
+
+  // Obtenemos las coordenadas relativas a la ventana (viewport)
   const clientX = 'touches' in e ? e.touches[0].clientX : (e as MouseEvent).clientX
   const clientY = 'touches' in e ? e.touches[0].clientY : (e as MouseEvent).clientY
-  return { x: clientX - rect.left, y: clientY - rect.top }
+
+  // Calculamos la escala (esto corrige el desplazamiento en móviles)
+  const scaleX = canvas.width / rect.width
+  const scaleY = canvas.height / rect.height
+
+  return {
+    x: (clientX - rect.left) * scaleX,
+    y: (clientY - rect.top) * scaleY
+  }
 }
 
 const clearSignature = () => {
@@ -462,5 +475,10 @@ watch(currentStep, async (newStep) => {
 
 .input-style {
   @apply w-full bg-slate-50 border-2 border-slate-100 p-4 rounded-2xl focus:border-blue-900 focus:bg-white outline-none transition-all font-medium text-sm;
+}
+
+canvas {
+  touch-action: none;
+  cursor: crosshair;
 }
 </style>
