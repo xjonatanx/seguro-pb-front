@@ -725,7 +725,8 @@ async function executeDelete() {
                       <label class="label-style">Edad</label>
                       <input
                         v-model="dep.edad"
-                        type="number"
+                        type="text"
+                        placeholder="Ej: 6 meses, 2 semanas o 5 años"
                         class="input-edit"
                       />
                     </div>
