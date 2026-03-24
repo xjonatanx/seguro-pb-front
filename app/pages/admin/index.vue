@@ -1,8 +1,20 @@
 <script setup lang="ts">
 import {
-  DialogRoot, DialogPortal, DialogOverlay, DialogContent, DialogTitle, DialogClose,
-  AlertDialogRoot, AlertDialogPortal, AlertDialogOverlay, AlertDialogContent, AlertDialogTitle, AlertDialogDescription, AlertDialogAction, AlertDialogCancel
-} from 'reka-ui'
+  DialogRoot,
+  DialogPortal,
+  DialogOverlay,
+  DialogContent,
+  DialogTitle,
+  DialogClose,
+  AlertDialogRoot,
+  AlertDialogPortal,
+  AlertDialogOverlay,
+  AlertDialogContent,
+  AlertDialogTitle,
+  AlertDialogDescription,
+  AlertDialogAction,
+  AlertDialogCancel,
+} from "reka-ui";
 
 /**
  * PANEL DE GESTIÓN RR.HH. - P&B INGENIERÍA
@@ -10,258 +22,535 @@ import {
  */
 
 // --- ESTADO DE ELIMINACIÓN ---
-const isDeleteOpen = ref(false)
-const idToDelete = ref<number | null>(null)
-const deleting = ref(false)
+const isDeleteOpen = ref(false);
+const idToDelete = ref<number | null>(null);
+const deleting = ref(false);
 
 // --- ESTADO DE SESIÓN ---
-const loginForm = reactive({ rut: '', password: '' })
-const authToken = useCookie('auth_token', { maxAge: 60 * 60 * 8 })
-const authorized = ref(false)
-const loading = ref(false)
-const submissions = ref<any[]>([])
-const error = ref('')
+const loginForm = reactive({ rut: "", password: "" });
+const authToken = useCookie("auth_token", { maxAge: 60 * 60 * 8 });
+const authorized = ref(false);
+const loading = ref(false);
+const submissions = ref<any[]>([]);
+const error = ref("");
 
 // --- ESTADO DE LISTADO (BACKEND) ---
-const searchQuery = ref('')
-const currentPage = ref(1)
-const totalPages = ref(1)
-const itemsPerPage = 8
+const searchQuery = ref("");
+const currentPage = ref(1);
+const totalPages = ref(1);
+const itemsPerPage = 8;
 
 // --- ESTADO DE EDICIÓN Y ALERTAS ---
-const isEditOpen = ref(false)
-const editForm = ref<any>(null)
-const savingEdit = ref(false)
-const isConfirmOpen = ref(false)
-const isSuccessOpen = ref(false)
+const isEditOpen = ref(false);
+const editForm = ref<any>(null);
+const savingEdit = ref(false);
+const isConfirmOpen = ref(false);
+const isSuccessOpen = ref(false);
+
+const isErrorOpen = ref(false);
+const errorMessage = ref("");
+
+// Función auxiliar para disparar el error
+const triggerError = (msg: string) => {
+  errorMessage.value = msg;
+  isErrorOpen.value = true;
+};
+
+// Función para añadir una nueva carga vacía
+const addEditDependent = () => {
+  // Verificamos que editForm tenga datos
+  if (!editForm.value) return;
+
+  // Si 'dependents' no existe o es null (por registros antiguos), lo inicializamos
+  if (!editForm.value.dependents) {
+    editForm.value.dependents = [];
+  }
+
+  // Insertamos un objeto con la estructura que espera tu formulario
+  editForm.value.dependents.push({
+    nombre: "",
+    rut: "",
+    nacimiento: "",
+    edad: "",
+    parentesco: "",
+    prevision: "Fonasa",
+    isapreNombre: "",
+    email: "",
+    telefono: "",
+    otroParentesco: "",
+  });
+};
+
+// Función para eliminar una carga específica por su índice
+const removeEditDependent = (index: number) => {
+  if (editForm.value && editForm.value.dependents) {
+    editForm.value.dependents.splice(index, 1);
+  }
+};
 
 // --- 1. ACCIONES DE DATOS ---
 
 async function fetchSubmissions() {
-  loading.value = true
+  loading.value = true;
   try {
-    const res: any = await $fetch('https://pybingenieriachile.cl/api-seguro/api/admin/submissions', {
-      params: {
-        page: currentPage.value,
-        limit: itemsPerPage,
-        search: searchQuery.value
-      },
-      headers: { Authorization: `Bearer ${authToken.value}` }
-    })
-    submissions.value = res.data
-    totalPages.value = res.totalPages
-    authorized.value = true
+    const res: any = await $fetch(
+      "https://pybingenieriachile.cl/api-seguro/api/admin/submissions",
+      {
+        params: {
+          page: currentPage.value,
+          limit: itemsPerPage,
+          search: searchQuery.value,
+        },
+        headers: { Authorization: `Bearer ${authToken.value}` },
+      }
+    );
+    submissions.value = res.data;
+    totalPages.value = res.totalPages;
+    authorized.value = true;
   } catch (e) {
-    authorized.value = false
-    authToken.value = null
+    authorized.value = false;
+    authToken.value = null;
   } finally {
-    loading.value = false
+    loading.value = false;
   }
 }
 
 function triggerConfirm() {
-  isConfirmOpen.value = true
+  isConfirmOpen.value = true;
 }
 
+const validateEditForm = () => {
+  const f = editForm.value;
+  if (!f) return "No hay datos para validar.";
+
+  // 1. Validar Trabajador
+  if (
+    !f.workerName ||
+    !f.workerRut ||
+    !f.workerCargo ||
+    !f.workerArea ||
+    !f.workerEmail ||
+    !f.workerPhone
+  ) {
+    return "Todos los campos del Trabajador son obligatorios.";
+  }
+
+  // 2. Validar Cargas (Dependents)
+  if (f.dependents && f.dependents.length > 0) {
+    for (let i = 0; i < f.dependents.length; i++) {
+      const d = f.dependents[i];
+      const n = i + 1; // Número de carga para el mensaje de error
+
+      if (
+        !d.nombre ||
+        !d.rut ||
+        !d.nacimiento ||
+        !d.edad ||
+        !d.parentesco ||
+        !d.prevision ||
+        !d.email ||
+        !d.telefono
+      ) {
+        return `La Carga N°${n} tiene campos vacíos. Todos son obligatorios.`;
+      }
+
+      // Validaciones condicionales para Cargas
+      if (d.parentesco === "Otro" && !d.otroParentesco)
+        return `Especifique el parentesco de la Carga N°${n}.`;
+      if (d.prevision === "Isapre" && !d.isapreNombre)
+        return `Especifique el nombre de la Isapre de la Carga N°${n}.`;
+    }
+  }
+
+  // 3. Validar Datos Bancarios
+  if (!f.bankName || !f.bankAccountType || !f.bankAccountNumber) {
+    return "Los datos bancarios están incompletos.";
+  }
+  if (f.bankAccountType === "Otro" && !f.bankOtherType) {
+    return "Especifique el tipo de cuenta bancaria.";
+  }
+
+  // 4. Validar Estado
+  if (!f.status) return "Debe seleccionar un estado para el proceso.";
+
+  return null; // Todo está OK
+};
+
 async function executeUpdate() {
-  isConfirmOpen.value = false
-  savingEdit.value = true
+  // 1. Ejecutamos la validación que creamos antes
+  const validationError = validateEditForm(); // Esta función devuelve el string del error
+  
+  if (validationError) {
+    // Si hay error, disparamos el diálogo de Reka
+    triggerError(validationError);
+    return; // Detenemos el guardado
+  }
+
+  // 2. Si todo está OK, procedemos con el guardado
+  isConfirmOpen.value = false;
+  savingEdit.value = true;
+  
   try {
-    await $fetch(`https://pybingenieriachile.cl/api-seguro/api/admin/submissions/${editForm.value.id}`, {
-      method: 'PUT',
-      headers: { Authorization: `Bearer ${authToken.value}` },
-      body: editForm.value
-    })
-    isEditOpen.value = false
-    isSuccessOpen.value = true
-    await fetchSubmissions()
+    await $fetch(
+      `https://pybingenieriachile.cl/api-seguro/api/admin/submissions/${editForm.value.id}`,
+      {
+        method: "PUT",
+        headers: { Authorization: `Bearer ${authToken.value}` },
+        body: editForm.value,
+      }
+    );
+    isEditOpen.value = false;
+    isSuccessOpen.value = true;
+    await fetchSubmissions();
   } catch (e: any) {
-    alert("Error al actualizar: " + (e.data?.error || "Verifica la conexión"));
+    // También usamos el diálogo para errores del servidor
+    triggerError(e.data?.error || "Error de conexión con el servidor");
   } finally {
-    savingEdit.value = false
+    savingEdit.value = false;
   }
 }
 
 // --- 2. MANEJO DE BUSCADOR Y PÁGINAS ---
 
-watch(currentPage, () => fetchSubmissions())
+watch(currentPage, () => fetchSubmissions());
 
-let searchTimeout: any
+let searchTimeout: any;
 watch(searchQuery, () => {
-  clearTimeout(searchTimeout)
+  clearTimeout(searchTimeout);
   searchTimeout = setTimeout(() => {
-    currentPage.value = 1
-    fetchSubmissions()
-  }, 500)
-})
+    currentPage.value = 1;
+    fetchSubmissions();
+  }, 500);
+});
 
 // --- 3. LOGIN Y UTILIDADES ---
 
 async function checkAdmin() {
   if (!loginForm.rut || !loginForm.password) {
-    error.value = "Ingresa RUT y Contraseña."
-    return
+    error.value = "Ingresa RUT y Contraseña.";
+    return;
   }
-  loading.value = true; error.value = ""
+  loading.value = true;
+  error.value = "";
   try {
-    const res: any = await $fetch('https://pybingenieriachile.cl/api-seguro/api/auth/login-admin', {
-      method: 'POST',
-      body: loginForm
-    })
+    const res: any = await $fetch(
+      "https://pybingenieriachile.cl/api-seguro/api/auth/login-admin",
+      {
+        method: "POST",
+        body: loginForm,
+      }
+    );
     if (res.token) {
-      authToken.value = res.token
-      currentPage.value = 1
-      await fetchSubmissions()
+      authToken.value = res.token;
+      currentPage.value = 1;
+      await fetchSubmissions();
     }
-  } catch (e) { error.value = "Credenciales incorrectas." }
-  finally { loading.value = false }
+  } catch (e) {
+    error.value = "Credenciales incorrectas.";
+  } finally {
+    loading.value = false;
+  }
 }
 
-const openEdit = (sub: any) => {
-  editForm.value = JSON.parse(JSON.stringify(sub))
-  isEditOpen.value = true
-}
+const openEdit = (submission: any) => {
+  // Clonamos el objeto para no editar la tabla principal por error
+  const data = JSON.parse(JSON.stringify(submission));
+
+  // SEGURO DE VIDA: Si el registro no tiene el array 'dependents', se lo creamos
+  if (!data.dependents || !Array.isArray(data.dependents)) {
+    data.dependents = [];
+  }
+
+  editForm.value = data;
+  isEditOpen.value = true;
+};
 
 const formatRut = (v: string) => {
-  let c = v.replace(/[^0-9kK]/g, '').toUpperCase()
-  if (c.length <= 1) return c
-  return c.slice(0, -1).replace(/\B(?=(\d{3})+(?!\d))/g, ".") + '-' + c.slice(-1)
-}
-watch(() => loginForm.rut, (n) => loginForm.rut = formatRut(n))
+  let c = v.replace(/[^0-9kK]/g, "").toUpperCase();
+  if (c.length <= 1) return c;
+  return (
+    c.slice(0, -1).replace(/\B(?=(\d{3})+(?!\d))/g, ".") + "-" + c.slice(-1)
+  );
+};
+watch(
+  () => loginForm.rut,
+  (n) => (loginForm.rut = formatRut(n))
+);
 
 function downloadPDF(id: number) {
-  window.open(`https://pybingenieriachile.cl/api-seguro/api/admin/generate-pdf/${id}?token=${authToken.value}`, '_blank')
+  window.open(
+    `https://pybingenieriachile.cl/api-seguro/api/admin/generate-pdf/${id}?token=${authToken.value}`,
+    "_blank"
+  );
 }
 
-function logout() { authToken.value = null; authorized.value = false; navigateTo('/') }
+function logout() {
+  authToken.value = null;
+  authorized.value = false;
+  navigateTo("/");
+}
 
-onMounted(() => { if (authToken.value) fetchSubmissions() })
+onMounted(() => {
+  if (authToken.value) fetchSubmissions();
+});
 
 function openDelete(id: number) {
-  idToDelete.value = id
-  isDeleteOpen.value = true
+  idToDelete.value = id;
+  isDeleteOpen.value = true;
 }
 
 async function executeDelete() {
-  if (!idToDelete.value) return
-  deleting.value = true
+  if (!idToDelete.value) return;
+  deleting.value = true;
   try {
     // Usaremos DELETE o PATCH según prefieras en tu backend
-    await $fetch(`https://pybingenieriachile.cl/api-seguro/api/admin/submissions/${idToDelete.value}`, {
-      method: 'DELETE',
-      headers: { Authorization: `Bearer ${authToken.value}` }
-    })
+    await $fetch(
+      `https://pybingenieriachile.cl/api-seguro/api/admin/submissions/${idToDelete.value}`,
+      {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${authToken.value}` },
+      }
+    );
 
-    isDeleteOpen.value = false
-    await fetchSubmissions() // Refrescamos la lista
+    isDeleteOpen.value = false;
+    await fetchSubmissions(); // Refrescamos la lista
   } catch (e: any) {
     alert("Error al eliminar: " + (e.data?.error || "Error de conexión"));
   } finally {
-    deleting.value = false
-    idToDelete.value = null
+    deleting.value = false;
+    idToDelete.value = null;
   }
 }
 </script>
 
 <template>
   <div class="min-h-screen bg-slate-100 font-sans text-slate-900">
-
-    <div v-if="!authorized" class="flex items-center justify-center min-h-screen p-4">
-      <div class="bg-white p-10 rounded-[2.5rem] shadow-2xl w-full max-w-md border-t-[12px] border-blue-900">
+    <div
+      v-if="!authorized"
+      class="flex items-center justify-center min-h-screen p-4"
+    >
+      <div
+        class="bg-white p-10 rounded-[2.5rem] shadow-2xl w-full max-w-md border-t-[12px] border-blue-900"
+      >
         <header class="text-center mb-8">
-          <h1 class="text-3xl font-black text-slate-800 italic uppercase tracking-tighter text-blue-900">P&B Admin</h1>
-          <p class="text-slate-400 font-bold uppercase text-[10px] tracking-widest mt-2 opacity-80">Gestión Seguros
-            RR.HH.</p>
+          <h1
+            class="text-3xl font-black text-slate-800 italic uppercase tracking-tighter text-blue-900"
+          >
+            P&B Admin
+          </h1>
+          <p
+            class="text-slate-400 font-bold uppercase text-[10px] tracking-widest mt-2 opacity-80"
+          >
+            Gestión Seguros RR.HH.
+          </p>
         </header>
         <div class="space-y-4">
-          <input v-model="loginForm.rut" placeholder="RUT Admin" maxlength="12" class="input-style" />
-          <input v-model="loginForm.password" type="password" placeholder="Contraseña" class="input-style"
-            @keyup.enter="checkAdmin" />
-          <div v-if="error"
-            class="bg-red-50 p-3 rounded-xl border-l-4 border-red-500 text-red-700 text-[10px] font-black uppercase">{{
-              error }}</div>
-          <button @click="checkAdmin" :disabled="loading" class="btn-primary">ENTRAR AL PANEL</button>
+          <input
+            v-model="loginForm.rut"
+            placeholder="RUT Admin"
+            maxlength="12"
+            class="input-style"
+          />
+          <input
+            v-model="loginForm.password"
+            type="password"
+            placeholder="Contraseña"
+            class="input-style"
+            @keyup.enter="checkAdmin"
+          />
+          <div
+            v-if="error"
+            class="bg-red-50 p-3 rounded-xl border-l-4 border-red-500 text-red-700 text-[10px] font-black uppercase"
+          >
+            {{ error }}
+          </div>
+          <button @click="checkAdmin" :disabled="loading" class="btn-primary">
+            ENTRAR AL PANEL
+          </button>
         </div>
       </div>
     </div>
 
     <div v-else class="p-8 max-w-6xl mx-auto">
-      <header class="flex flex-col lg:flex-row justify-between items-start lg:items-center mb-10 gap-6">
+      <header
+        class="flex flex-col lg:flex-row justify-between items-start lg:items-center mb-10 gap-6"
+      >
         <div>
-          <h1 class="text-4xl font-black text-blue-900 italic uppercase tracking-tighter">Solicitudes</h1>
-          <p class="text-slate-400 font-bold uppercase text-[10px] tracking-widest">Listado Maestro de Incorporaciones
+          <h1
+            class="text-4xl font-black text-blue-900 italic uppercase tracking-tighter"
+          >
+            Solicitudes
+          </h1>
+          <p
+            class="text-slate-400 font-bold uppercase text-[10px] tracking-widest"
+          >
+            Listado Maestro de Incorporaciones
           </p>
         </div>
 
-        <div class="flex flex-col sm:flex-row items-center gap-4 w-full lg:w-auto">
+        <div
+          class="flex flex-col sm:flex-row items-center gap-4 w-full lg:w-auto"
+        >
           <div class="relative w-full sm:w-80">
-            <input v-model="searchQuery" placeholder="Buscar por nombre o RUT..."
-              class="w-full bg-white border-2 border-slate-200 pl-4 pr-4 py-3 rounded-2xl text-sm font-bold focus:border-blue-900 outline-none transition-all shadow-sm" />
+            <input
+              v-model="searchQuery"
+              placeholder="Buscar por nombre o RUT..."
+              class="w-full bg-white border-2 border-slate-200 pl-4 pr-4 py-3 rounded-2xl text-sm font-bold focus:border-blue-900 outline-none transition-all shadow-sm"
+            />
           </div>
-          <button @click="logout"
-            class="bg-red-600 text-white px-6 py-3 rounded-2xl text-[10px] font-black uppercase hover:bg-red-700 shadow-lg transition-all active:scale-95 w-full sm:w-auto">
+          <button
+            @click="logout"
+            class="bg-red-600 text-white px-6 py-3 rounded-2xl text-[10px] font-black uppercase hover:bg-red-700 shadow-lg transition-all active:scale-95 w-full sm:w-auto"
+          >
             Cerrar Sesión
           </button>
         </div>
       </header>
 
-      <div class="bg-white rounded-[2.5rem] shadow-xl border border-slate-200 overflow-hidden relative">
-        <div v-if="loading"
-          class="absolute inset-0 bg-white/50 backdrop-blur-[1px] z-10 flex items-center justify-center font-black text-blue-900 text-[10px] uppercase tracking-widest animate-pulse">
-          Sincronizando...</div>
+      <div
+        class="bg-white rounded-[2.5rem] shadow-xl border border-slate-200 overflow-hidden relative"
+      >
+        <div
+          v-if="loading"
+          class="absolute inset-0 bg-white/50 backdrop-blur-[1px] z-10 flex items-center justify-center font-black text-blue-900 text-[10px] uppercase tracking-widest animate-pulse"
+        >
+          Sincronizando...
+        </div>
 
-        <table class="w-full text-left">
-          <thead
-            class="bg-slate-50 border-b border-slate-200 text-[10px] font-black text-slate-400 uppercase tracking-widest">
-            <tr>
-              <th class="p-6 text-center">ID</th>
-              <th class="p-6">Trabajador</th>
-              <th class="p-6 text-center">Estado</th>
-              <th class="p-6 text-center">Acciones</th>
-            </tr>
-          </thead>
-          <tbody class="divide-y divide-slate-100">
-            <tr v-for="s in submissions" :key="s.id" class="hover:bg-blue-50/50 transition-colors">
-              <td class="p-6 text-center text-slate-300 font-bold text-xs">{{ s.id }}</td>
-              <td class="p-6 font-bold text-slate-700 uppercase text-sm">
-                {{ s.workerName }}<br><span class="text-[13px] font-mono font-normal text-slate-600">{{ s.workerRut
-                  }}</span>
-              </td>
-              <td class="p-6 text-center">
-                <span :class="s.status === 'submitted' ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'"
-                  class="px-3 py-1 rounded-full text-[11px] font-black uppercase tracking-tighter">
-                  {{ s.status === 'submitted' ? 'Recibido' : 'Borrador' }}
-                </span>
-              </td>
-              <td class="p-6">
-                <div class="flex justify-center gap-2">
-                  <button @click="openEdit(s)"
-                    class="bg-slate-100 text-slate-600 px-4 py-2 rounded-lg text-[10px] font-black uppercase hover:bg-blue-900 hover:text-white transition-all">Ver
-                    Detalle</button>
-                  <button v-if="s.status === 'submitted'" @click="downloadPDF(s.id)"
-                    class="bg-blue-900 text-white px-4 py-2 rounded-lg text-[10px] font-black uppercase shadow-lg hover:bg-blue-800 transition-all active:scale-95">PDF</button>
+        <div class="w-full overflow-hidden">
+          <div class="overflow-x-auto">
+            <table class="w-full text-left border-collapse">
+              <thead
+                class="hidden md:table-header-group bg-slate-50 border-b border-slate-200 text-[10px] font-black text-slate-400 uppercase tracking-widest"
+              >
+                <tr>
+                  <th class="p-6 text-center">ID</th>
+                  <th class="p-6">Trabajador</th>
+                  <th class="p-6 text-center">Estado</th>
+                  <th class="p-6 text-center">Acciones</th>
+                </tr>
+              </thead>
 
-                  <button @click="openDelete(s.id)"
-                    class="bg-red-50 text-red-600 p-2 rounded-lg hover:bg-red-600 hover:text-white transition-all border border-red-100">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24"
-                      stroke="currentColor">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                        d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                    </svg>
-                  </button>
-                </div>
-              </td>
-            </tr>
-          </tbody>
-        </table>
+              <tbody class="divide-y divide-slate-100 block md:table-row-group">
+                <tr
+                  v-for="s in submissions"
+                  :key="s.id"
+                  class="transition-colors block md:table-row p-5 md:p-0 mb-5 md:mb-0 bg-white/70 md:bg-transparent md:hover:bg-blue-50/50 rounded-2xl md:rounded-none border border-slate-100 md:border-none shadow-sm md:shadow-none"
+                >
+                  <td
+                    class="block md:table-cell p-2 md:p-6 text-left md:text-center pt-4 md:pt-6"
+                  >
+                    <span
+                      class="md:hidden text-[10px] font-black text-slate-400 uppercase mr-2"
+                      >ID:</span
+                    >
+                    <span
+                      class="text-slate-400 md:text-slate-300 font-bold text-xs"
+                      >#{{ s.id }}</span
+                    >
+                  </td>
 
-        <div class="bg-slate-50 p-6 flex justify-between items-center border-t border-slate-100">
-          <span class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Página {{ currentPage }} de {{
-            totalPages }}</span>
+                  <td class="block md:table-cell p-2 md:p-6">
+                    <span
+                      class="md:hidden block text-[10px] font-black text-slate-400 uppercase mb-1"
+                      >Trabajador:</span
+                    >
+                    <div
+                      class="font-bold text-slate-700 uppercase text-sm md:text-base"
+                    >
+                      {{ s.workerName }}
+                    </div>
+                    <span
+                      class="text-[12px] md:text-[13px] font-mono text-slate-500"
+                      >{{ s.workerRut }}</span
+                    >
+                  </td>
+
+                  <td
+                    class="block md:table-cell p-2 md:p-6 text-left md:text-center"
+                  >
+                    <span
+                      class="md:hidden text-[10px] font-black text-slate-400 uppercase mr-2"
+                      >Estado:</span
+                    >
+                    <span
+                      :class="
+                        s.status === 'submitted'
+                          ? 'bg-green-100 text-green-700'
+                          : 'bg-amber-100 text-amber-700'
+                      "
+                      class="px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-tighter"
+                    >
+                      {{ s.status === "submitted" ? "Recibido" : "Borrador" }}
+                    </span>
+                  </td>
+
+                  <td class="block md:table-cell p-4 md:p-6 pb-6 md:pb-6">
+                    <div class="flex flex-wrap md:justify-center gap-2">
+                      <button
+                        @click="openEdit(s)"
+                        class="flex-1 md:flex-none bg-slate-100 text-slate-600 px-4 py-3 md:py-2 rounded-xl text-[10px] font-black uppercase hover:bg-blue-900 hover:text-white transition-all"
+                      >
+                        Ver Detalle
+                      </button>
+
+                      <button
+                        v-if="s.status === 'submitted'"
+                        @click="downloadPDF(s.id)"
+                        class="md:flex-none bg-blue-900 text-white px-4 py-3 md:py-2 rounded-xl text-[10px] font-black uppercase shadow-lg shadow-blue-200 active:scale-95"
+                      >
+                        PDF
+                      </button>
+
+                      <button
+                        @click="openDelete(s.id)"
+                        class="bg-red-50 text-red-600 p-3 md:p-2 rounded-xl hover:bg-red-600 hover:text-white transition-all border border-red-100"
+                      >
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          class="h-5 w-5 md:h-4 md:w-4"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                          stroke="currentColor"
+                        >
+                          <path
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                            stroke-width="2"
+                            d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                          />
+                        </svg>
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div
+          class="bg-slate-50 p-6 flex justify-between items-center border-t border-slate-100"
+        >
+          <span
+            class="text-[10px] font-bold text-slate-400 uppercase tracking-widest"
+            >Página {{ currentPage }} de {{ totalPages }}</span
+          >
           <div class="flex gap-2">
-            <button @click="currentPage--" :disabled="currentPage === 1 || loading" class="btn-nav">Anterior</button>
-            <button @click="currentPage++" :disabled="currentPage === totalPages || loading"
-              class="btn-nav bg-blue-900 text-white border-blue-900">Siguiente</button>
+            <button
+              @click="currentPage--"
+              :disabled="currentPage === 1 || loading"
+              class="btn-nav"
+            >
+              Anterior
+            </button>
+            <button
+              @click="currentPage++"
+              :disabled="currentPage === totalPages || loading"
+              class="btn-nav bg-blue-900 text-white border-blue-900"
+            >
+              Siguiente
+            </button>
           </div>
         </div>
       </div>
@@ -269,122 +558,307 @@ async function executeDelete() {
 
     <DialogRoot v-model:open="isEditOpen">
       <DialogPortal>
-        <DialogOverlay class="bg-black/60 fixed inset-0 z-[100] backdrop-blur-sm" />
+        <DialogOverlay
+          class="bg-black/60 fixed inset-0 z-[100] backdrop-blur-sm"
+        />
         <DialogContent
-          class="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-white rounded-[2.5rem] shadow-2xl w-[95vw] max-w-5xl max-h-[90vh] z-[101] overflow-hidden flex flex-col outline-none border-t-[10px] border-blue-900">
-
-          <header class="p-8 bg-white border-b flex justify-between items-center shrink-0">
+          class="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-white rounded-[2.5rem] shadow-2xl w-[95vw] max-w-5xl max-h-[90vh] z-[101] overflow-hidden flex flex-col outline-none border-t-[10px] border-blue-900"
+        >
+          <header
+            class="p-8 bg-white border-b flex justify-between items-center shrink-0"
+          >
             <div>
-              <DialogTitle class="text-2xl font-black italic uppercase tracking-tighter text-blue-900">Expediente
-                Digital #{{ editForm?.id }}</DialogTitle>
-              <p class="text-slate-400 text-[10px] font-bold uppercase tracking-widest mt-1">Revisión y Edición de datos
-                P&B</p>
+              <DialogTitle
+                class="text-2xl font-black italic uppercase tracking-tighter text-blue-900"
+                >Expediente Digital #{{ editForm?.id }}</DialogTitle
+              >
+              <p
+                class="text-slate-400 text-[10px] font-bold uppercase tracking-widest mt-1"
+              >
+                Revisión y Edición de datos P&B
+              </p>
             </div>
-            <DialogClose class="bg-slate-100 p-2 rounded-full hover:bg-slate-200 transition-all text-slate-400">✕
+            <DialogClose
+              class="bg-slate-100 p-2 rounded-full hover:bg-slate-200 transition-all text-slate-400"
+              >✕
             </DialogClose>
           </header>
 
-          <div v-if="editForm" class="p-8 overflow-y-auto space-y-10 custom-scrollbar">
-
+          <div
+            v-if="editForm"
+            class="p-8 overflow-y-auto space-y-10 custom-scrollbar"
+          >
             <section>
-              <h3 class="text-[10px] font-black text-blue-900 uppercase tracking-[0.2em] mb-6 border-b pb-2">1. Datos
-                del Trabajador</h3>
+              <h3
+                class="text-[10px] font-black text-blue-900 uppercase tracking-[0.2em] mb-6 border-b pb-2"
+              >
+                1. Datos del Trabajador
+              </h3>
               <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <div><label class="label-style">Nombre Completo</label><input v-model="editForm.workerName"
-                    placeholder="Ej: Juan Pérez" class="input-edit" /></div>
-                <div><label class="label-style">RUT</label><input v-model="editForm.workerRut"
-                    placeholder="12.345.678-9" class="input-edit" /></div>
-                <div><label class="label-style">Cargo Actual</label><input v-model="editForm.workerCargo"
-                    placeholder="Cargo en la empresa" class="input-edit" /></div>
-                <div><label class="label-style">Área / Depto</label><input v-model="editForm.workerArea"
-                    placeholder="Ubicación laboral" class="input-edit" /></div>
-                <div><label class="label-style">Email</label><input v-model="editForm.workerEmail"
-                    placeholder="correo@pyb.cl" class="input-edit" /></div>
-                <div><label class="label-style">Teléfono</label><input v-model="editForm.workerPhone"
-                    placeholder="+56 9 ..." class="input-edit" /></div>
+                <div>
+                  <label class="label-style">Nombre Completo</label
+                  ><input
+                    v-model="editForm.workerName"
+                    placeholder="Ej: Juan Pérez"
+                    class="input-edit"
+                  />
+                </div>
+                <div>
+                  <label class="label-style">RUT</label
+                  ><input
+                    v-model="editForm.workerRut"
+                    placeholder="12.345.678-9"
+                    class="input-edit"
+                  />
+                </div>
+                <div>
+                  <label class="label-style">Cargo Actual</label
+                  ><input
+                    v-model="editForm.workerCargo"
+                    placeholder="Cargo en la empresa"
+                    class="input-edit"
+                  />
+                </div>
+                <div>
+                  <label class="label-style">Área / Depto</label
+                  ><input
+                    v-model="editForm.workerArea"
+                    placeholder="Ubicación laboral"
+                    class="input-edit"
+                  />
+                </div>
+                <div>
+                  <label class="label-style">Email</label
+                  ><input
+                    v-model="editForm.workerEmail"
+                    placeholder="correo@pyb.cl"
+                    class="input-edit"
+                  />
+                </div>
+                <div>
+                  <label class="label-style">Teléfono</label
+                  ><input
+                    v-model="editForm.workerPhone"
+                    placeholder="+56 9 ..."
+                    class="input-edit"
+                  />
+                </div>
               </div>
             </section>
 
             <section>
-              <h3 class="text-[10px] font-black text-blue-900 uppercase tracking-[0.2em] mb-6 border-b pb-2">2. Datos de
-                la Carga</h3>
-              <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <div class="md:col-span-2"><label class="label-style">Nombre Carga</label><input
-                    v-model="editForm.depName" placeholder="Nombre completo beneficiario" class="input-edit" /></div>
-                <div><label class="label-style">RUT Carga</label><input v-model="editForm.depRut"
-                    placeholder="20.123.456-K" class="input-edit" /></div>
-                <div><label class="label-style">Fec. Nacimiento</label><input v-model="editForm.depBirthDate"
-                    placeholder="DD/MM/AAAA" class="input-edit" /></div>
-                <div><label class="label-style">Edad</label><input v-model="editForm.depAge" placeholder="00"
-                    class="input-edit" /></div>
+              <div class="flex justify-between items-end mb-6 border-b pb-2">
+                <h3
+                  class="text-[10px] font-black text-blue-900 uppercase tracking-[0.2em]"
+                >
+                  2. Datos de las Cargas Familiares
+                </h3>
+                <button
+                  @click="addEditDependent"
+                  type="button"
+                  class="text-[9px] font-black bg-blue-50 text-blue-700 px-3 py-1 rounded-full hover:bg-blue-100 transition-colors"
+                >
+                  + AÑADIR CARGA
+                </button>
+              </div>
 
-                <div class="space-y-4">
-                  <div>
-                    <label class="label-style">Parentesco</label>
-                    <select v-model="editForm.depRelationship" class="input-edit">
-                      <option value="Cónyuge">Cónyuge</option>
-                      <option value="Conviviente Civil">Conviviente Civil</option>
-                      <option value="Hijo/a">Hijo/a</option>
-                      <option value="Otro">Otro</option>
-                    </select>
-                  </div>
-                  <div v-if="editForm.depRelationship === 'Otro'" class="animate-in fade-in slide-in-from-top-1">
-                    <label class="label-style text-blue-600">Especificar Parentesco</label>
-                    <input v-model="editForm.depOtherRel" placeholder="¿Cuál?"
-                      class="input-edit border-blue-200 bg-blue-50/30" />
+              <div class="space-y-8">
+                <div
+                  v-for="(dep, index) in editForm.dependents"
+                  :key="index"
+                  class="p-6 border border-slate-100 rounded-3xl bg-slate-50/50 relative group"
+                >
+                  <button
+                    v-if="editForm.dependents.length > 1"
+                    @click="removeEditDependent(index)"
+                    type="button"
+                    class="absolute top-4 right-4 bg-red-500 hover:bg-red-600 text-white px-3 py-1.5 rounded-xl shadow-sm transition-all active:scale-95 flex items-center gap-1 group"
+                  >
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      width="16"
+                      height="16"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="2"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                    >
+                      <path d="M3 6h18"></path>
+                      <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path>
+                      <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path>
+                      <line x1="10" y1="11" x2="10" y2="17"></line>
+                      <line x1="14" y1="11" x2="14" y2="17"></line>
+                    </svg>
+                  </button>
+                  <br />
+
+                  <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div class="md:col-span-2">
+                      <label class="label-style"
+                        >Nombre Carga #{{ index + 1 }}</label
+                      >
+                      <input
+                        v-model="dep.nombre"
+                        placeholder="Nombre completo beneficiario"
+                        class="input-edit"
+                      />
+                    </div>
+                    <div>
+                      <label class="label-style">RUT Carga</label>
+                      <input
+                        v-model="dep.rut"
+                        placeholder="20.123.456-K"
+                        class="input-edit"
+                      />
+                    </div>
+                    <div>
+                      <label class="label-style">Fec. Nacimiento</label>
+                      <input
+                        v-model="dep.nacimiento"
+                        type="date"
+                        class="input-edit"
+                      />
+                    </div>
+                    <div>
+                      <label class="label-style">Edad</label>
+                      <input
+                        v-model="dep.edad"
+                        type="number"
+                        class="input-edit"
+                      />
+                    </div>
+
+                    <div class="space-y-4">
+                      <div>
+                        <label class="label-style">Parentesco</label>
+                        <select v-model="dep.parentesco" class="input-edit">
+                          <option value="Cónyuge">Cónyuge</option>
+                          <option value="Conviviente Civil">
+                            Conviviente Civil
+                          </option>
+                          <option value="Hijo/a">Hijo/a</option>
+                          <option value="Otro">Otro</option>
+                        </select>
+                      </div>
+                      <div
+                        v-if="dep.parentesco === 'Otro'"
+                        class="animate-in fade-in slide-in-from-top-1"
+                      >
+                        <label class="label-style text-blue-600"
+                          >Especificar Parentesco</label
+                        >
+                        <input
+                          v-model="dep.otroParentesco"
+                          placeholder="¿Cuál?"
+                          class="input-edit border-blue-200 bg-blue-50/30"
+                        />
+                      </div>
+                    </div>
+
+                    <div class="space-y-4">
+                      <div>
+                        <label class="label-style">Sistema Salud</label>
+                        <select v-model="dep.prevision" class="input-edit">
+                          <option value="Fonasa">Fonasa</option>
+                          <option value="Isapre">Isapre</option>
+                        </select>
+                      </div>
+                      <div
+                        v-if="dep.prevision === 'Isapre'"
+                        class="animate-in fade-in slide-in-from-top-1"
+                      >
+                        <label class="label-style text-blue-600"
+                          >Nombre Isapre</label
+                        >
+                        <input
+                          v-model="dep.isapreNombre"
+                          placeholder="Colmena, Consalud..."
+                          class="input-edit border-blue-200 bg-blue-50/30"
+                        />
+                      </div>
+                    </div>
+
+                    <div>
+                      <label class="label-style">Email Carga</label>
+                      <input
+                        v-model="dep.email"
+                        placeholder="correo@ejemplo.com"
+                        class="input-edit"
+                      />
+                    </div>
+                    <div>
+                      <label class="label-style">Teléfono Carga</label>
+                      <input
+                        v-model="dep.telefono"
+                        placeholder="+56 9..."
+                        class="input-edit"
+                      />
+                    </div>
                   </div>
                 </div>
-
-                <div class="space-y-4">
-                  <div>
-                    <label class="label-style">Sistema Salud</label>
-                    <select v-model="editForm.depHealthSystem" class="input-edit">
-                      <option value="Fonasa">Fonasa</option>
-                      <option value="Isapre">Isapre</option>
-                    </select>
-                  </div>
-                  <div v-if="editForm.depHealthSystem === 'Isapre'" class="animate-in fade-in slide-in-from-top-1">
-                    <label class="label-style text-blue-600">Nombre Isapre</label>
-                    <input v-model="editForm.depIsapreName" placeholder="Colmena, Consalud..."
-                      class="input-edit border-blue-200 bg-blue-50/30" />
-                  </div>
-                </div>
-
-                <div><label class="label-style">Email Carga</label><input v-model="editForm.depEmail"
-                    placeholder="correo@ejemplo.com" class="input-edit" /></div>
               </div>
             </section>
 
             <section>
-              <h3 class="text-[10px] font-black text-blue-900 uppercase tracking-[0.2em] mb-6 border-b pb-2">3.
-                Información Bancaria</h3>
+              <h3
+                class="text-[10px] font-black text-blue-900 uppercase tracking-[0.2em] mb-6 border-b pb-2"
+              >
+                3. Información Bancaria
+              </h3>
               <div class="grid grid-cols-1 md:grid-cols-3 gap-6 items-start">
-                <div><label class="label-style">Banco</label><input v-model="editForm.bankName"
-                    placeholder="Ej: Banco Estado" class="input-edit" /></div>
+                <div>
+                  <label class="label-style">Banco</label
+                  ><input
+                    v-model="editForm.bankName"
+                    placeholder="Ej: Banco Estado"
+                    class="input-edit"
+                  />
+                </div>
 
                 <div class="space-y-4">
                   <div>
                     <label class="label-style">Tipo de Cuenta</label>
-                    <select v-model="editForm.bankAccountType" class="input-edit">
+                    <select
+                      v-model="editForm.bankAccountType"
+                      class="input-edit"
+                    >
                       <option value="Cuenta Corriente">Cuenta Corriente</option>
                       <option value="Cuenta Vista">Cuenta Vista</option>
                       <option value="Cuenta RUT">Cuenta RUT</option>
                       <option value="Otro">Otro</option>
                     </select>
                   </div>
-                  <div v-if="editForm.bankAccountType === 'Otro'" class="animate-in fade-in slide-in-from-top-1">
-                    <label class="label-style text-blue-600">Especificar Tipo</label>
-                    <input v-model="editForm.bankOtherType" placeholder="¿Qué tipo de cuenta?"
-                      class="input-edit border-blue-200 bg-blue-50/30" />
+                  <div
+                    v-if="editForm.bankAccountType === 'Otro'"
+                    class="animate-in fade-in slide-in-from-top-1"
+                  >
+                    <label class="label-style text-blue-600"
+                      >Especificar Tipo</label
+                    >
+                    <input
+                      v-model="editForm.bankOtherType"
+                      placeholder="¿Qué tipo de cuenta?"
+                      class="input-edit border-blue-200 bg-blue-50/30"
+                    />
                   </div>
                 </div>
 
-                <div><label class="label-style">N° Cuenta</label><input v-model="editForm.bankAccountNumber"
-                    placeholder="Número de cuenta" class="input-edit" /></div>
+                <div>
+                  <label class="label-style">N° Cuenta</label
+                  ><input
+                    v-model="editForm.bankAccountNumber"
+                    placeholder="Número de cuenta"
+                    class="input-edit"
+                  />
+                </div>
               </div>
             </section>
 
-            <section class="bg-slate-50 p-8 rounded-[2rem] border-2 border-dashed border-slate-200">
+            <section
+              class="bg-slate-50 p-8 rounded-[2rem] border-2 border-dashed border-slate-200"
+            >
               <label class="label-style">Estado del Proceso</label>
               <select v-model="editForm.status" class="input-edit !bg-white">
                 <option value="draft">Borrador (Incompleto)</option>
@@ -394,10 +868,15 @@ async function executeDelete() {
           </div>
 
           <footer class="p-8 bg-white border-t flex justify-end gap-4 shrink-0">
-            <DialogClose class="px-8 py-4 font-black text-slate-400 uppercase text-[10px] tracking-widest">Cancelar
+            <DialogClose
+              class="px-8 py-4 font-black text-slate-400 uppercase text-[10px] tracking-widest"
+              >Cancelar
             </DialogClose>
-            <button @click="triggerConfirm" :disabled="savingEdit"
-              class="bg-blue-900 text-white px-10 py-4 rounded-2xl font-black shadow-xl uppercase text-[10px] tracking-widest hover:bg-blue-800 transition-all active:scale-95">
+            <button
+              @click="triggerConfirm"
+              :disabled="savingEdit"
+              class="bg-blue-900 text-white px-10 py-4 rounded-2xl font-black shadow-xl uppercase text-[10px] tracking-widest hover:bg-blue-800 transition-all active:scale-95"
+            >
               Confirmar y Actualizar
             </button>
           </footer>
@@ -407,18 +886,29 @@ async function executeDelete() {
 
     <AlertDialogRoot v-model:open="isConfirmOpen">
       <AlertDialogPortal>
-        <AlertDialogOverlay class="bg-black/50 fixed inset-0 z-[120] backdrop-blur-sm" />
+        <AlertDialogOverlay
+          class="bg-black/50 fixed inset-0 z-[120] backdrop-blur-sm"
+        />
         <AlertDialogContent
-          class="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-white p-8 rounded-[2rem] shadow-2xl w-[90vw] max-w-md z-[121] outline-none border-b-8 border-amber-500">
-          <AlertDialogTitle class="text-xl font-black text-slate-800 uppercase mb-2">¿Confirmar Modificación?
+          class="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-white p-8 rounded-[2rem] shadow-2xl w-[90vw] max-w-md z-[121] outline-none border-b-8 border-amber-500"
+        >
+          <AlertDialogTitle
+            class="text-xl font-black text-slate-800 uppercase mb-2"
+            >¿Confirmar Modificación?
           </AlertDialogTitle>
-          <AlertDialogDescription class="text-slate-500 mb-6 text-sm italic">Vas a sobreescribir datos del sistema. Esto
-            alterará el PDF oficial de incorporación.</AlertDialogDescription>
+          <AlertDialogDescription class="text-slate-500 mb-6 text-sm italic"
+            >Vas a sobreescribir datos del sistema. Esto alterará el PDF oficial
+            de incorporación.</AlertDialogDescription
+          >
           <div class="flex justify-end gap-4">
-            <AlertDialogCancel class="px-6 py-3 font-bold text-slate-400 uppercase text-[10px]">No, volver
+            <AlertDialogCancel
+              class="px-6 py-3 font-bold text-slate-400 uppercase text-[10px]"
+              >No, volver
             </AlertDialogCancel>
-            <AlertDialogAction @click="executeUpdate"
-              class="bg-amber-500 text-white px-8 py-3 rounded-xl font-black uppercase text-[10px]">Sí, actualizar
+            <AlertDialogAction
+              @click="executeUpdate"
+              class="bg-amber-500 text-white px-8 py-3 rounded-xl font-black uppercase text-[10px]"
+              >Sí, actualizar
             </AlertDialogAction>
           </div>
         </AlertDialogContent>
@@ -427,17 +917,29 @@ async function executeDelete() {
 
     <AlertDialogRoot v-model:open="isSuccessOpen">
       <AlertDialogPortal>
-        <AlertDialogOverlay class="bg-black/50 fixed inset-0 z-[130] backdrop-blur-sm" />
+        <AlertDialogOverlay
+          class="bg-black/50 fixed inset-0 z-[130] backdrop-blur-sm"
+        />
         <AlertDialogContent
-          class="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-white p-8 rounded-[2rem] shadow-2xl w-[90vw] max-w-md z-[131] outline-none border-b-8 border-green-500 text-center">
+          class="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-white p-8 rounded-[2rem] shadow-2xl w-[90vw] max-w-md z-[131] outline-none border-b-8 border-green-500 text-center"
+        >
           <div
-            class="w-16 h-16 bg-green-100 text-green-600 rounded-full flex items-center justify-center mx-auto mb-4 font-black text-2xl">
-            ✓</div>
-          <AlertDialogTitle class="text-xl font-black text-slate-800 uppercase mb-2">¡Completado!</AlertDialogTitle>
-          <AlertDialogDescription class="text-slate-500 mb-6 text-sm font-medium">Los datos se han sincronizado
-            correctamente con el servidor.</AlertDialogDescription>
+            class="w-16 h-16 bg-green-100 text-green-600 rounded-full flex items-center justify-center mx-auto mb-4 font-black text-2xl"
+          >
+            ✓
+          </div>
+          <AlertDialogTitle
+            class="text-xl font-black text-slate-800 uppercase mb-2"
+            >¡Completado!</AlertDialogTitle
+          >
+          <AlertDialogDescription
+            class="text-slate-500 mb-6 text-sm font-medium"
+            >Los datos se han sincronizado correctamente con el
+            servidor.</AlertDialogDescription
+          >
           <AlertDialogAction
-            class="bg-blue-900 text-white px-10 py-3 rounded-xl font-black uppercase text-[10px] w-full">Cerrar
+            class="bg-blue-900 text-white px-10 py-3 rounded-xl font-black uppercase text-[10px] w-full"
+            >Cerrar
           </AlertDialogAction>
         </AlertDialogContent>
       </AlertDialogPortal>
@@ -445,33 +947,108 @@ async function executeDelete() {
 
     <AlertDialogRoot v-model:open="isDeleteOpen">
       <AlertDialogPortal>
-        <AlertDialogOverlay class="bg-black/50 fixed inset-0 z-[140] backdrop-blur-sm" />
+        <AlertDialogOverlay
+          class="bg-black/50 fixed inset-0 z-[140] backdrop-blur-sm"
+        />
         <AlertDialogContent
-          class="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-white p-8 rounded-[2rem] shadow-2xl w-[90vw] max-w-md z-[141] outline-none border-b-8 border-red-600">
-          <div class="w-12 h-12 bg-red-100 text-red-600 rounded-full flex items-center justify-center mb-4">
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24"
-              stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+          class="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-white p-8 rounded-[2rem] shadow-2xl w-[90vw] max-w-md z-[141] outline-none border-b-8 border-red-600"
+        >
+          <div
+            class="w-12 h-12 bg-red-100 text-red-600 rounded-full flex items-center justify-center mb-4"
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              class="h-6 w-6"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+              />
             </svg>
           </div>
-          <AlertDialogTitle class="text-xl font-black text-slate-800 uppercase mb-2">¿Eliminar Expediente?
+          <AlertDialogTitle
+            class="text-xl font-black text-slate-800 uppercase mb-2"
+            >¿Eliminar Expediente?
           </AlertDialogTitle>
           <AlertDialogDescription class="text-slate-500 mb-6 text-sm italic">
-            ¡CUIDADO! Esta acción es <span class="text-red-600 font-bold uppercase">irreversible</span>.
-            El expediente se borrará permanentemente de la base de datos y no podrá ser recuperado.
+            ¡CUIDADO! Esta acción es
+            <span class="text-red-600 font-bold uppercase">irreversible</span>.
+            El expediente se borrará permanentemente de la base de datos y no
+            podrá ser recuperado.
           </AlertDialogDescription>
           <div class="flex justify-end gap-4">
-            <AlertDialogCancel :disabled="deleting" class="px-6 py-3 font-bold text-slate-400 uppercase text-[10px]">
-              Cancelar</AlertDialogCancel>
-            <AlertDialogAction @click="executeDelete" :disabled="deleting"
-              class="bg-red-600 text-white px-8 py-3 rounded-xl font-black uppercase text-[10px] hover:bg-red-700 transition-all">
-              {{ deleting ? 'Eliminando...' : 'Sí, eliminar' }}
+            <AlertDialogCancel
+              :disabled="deleting"
+              class="px-6 py-3 font-bold text-slate-400 uppercase text-[10px]"
+            >
+              Cancelar</AlertDialogCancel
+            >
+            <AlertDialogAction
+              @click="executeDelete"
+              :disabled="deleting"
+              class="bg-red-600 text-white px-8 py-3 rounded-xl font-black uppercase text-[10px] hover:bg-red-700 transition-all"
+            >
+              {{ deleting ? "Eliminando..." : "Sí, eliminar" }}
             </AlertDialogAction>
           </div>
         </AlertDialogContent>
       </AlertDialogPortal>
     </AlertDialogRoot>
+
+    <DialogRoot v-model:open="isErrorOpen">
+      <DialogPortal>
+        <DialogOverlay
+          class="bg-black/60 fixed inset-0 z-[200] backdrop-blur-sm"
+        />
+        <DialogContent
+          class="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-white rounded-[2rem] shadow-2xl w-[90vw] max-w-md z-[201] overflow-hidden outline-none border-t-[8px] border-red-500 p-8"
+        >
+          <div class="flex flex-col items-center text-center">
+            <div class="bg-red-50 p-4 rounded-full mb-4">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                class="h-10 w-10 text-red-500"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+                />
+              </svg>
+            </div>
+
+            <DialogTitle
+              class="text-xl font-black text-slate-800 uppercase tracking-tighter"
+            >
+              Datos Incompletos
+            </DialogTitle>
+
+            <DialogDescription
+              class="mt-4 text-slate-500 text-sm font-medium leading-relaxed"
+            >
+              {{ errorMessage }}
+            </DialogDescription>
+
+            <div class="mt-8 w-full">
+              <DialogClose
+                class="w-full bg-slate-900 text-white py-4 rounded-2xl font-black uppercase text-[10px] tracking-widest hover:bg-slate-800 transition-all active:scale-95 outline-none"
+              >
+                Entendido, revisar
+              </DialogClose>
+            </div>
+          </div>
+        </DialogContent>
+      </DialogPortal>
+    </DialogRoot>
   </div>
 </template>
 
