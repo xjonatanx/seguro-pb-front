@@ -321,11 +321,18 @@ async function executeSave() {
   saving.value = true;
   const isFinal = alertConfig.isConfirm;
   try {
-    await $fetch("https://pybingenieriachile.cl/api-seguro/api/submissions/save", {
-      method: "POST",
-      headers: { Authorization: `Bearer ${workerToken.value}` },
-      body: { userId: Number(userId.value), data: formData, finalize: isFinal },
-    });
+    await $fetch(
+      "https://pybingenieriachile.cl/api-seguro/api/submissions/save",
+      {
+        method: "POST",
+        headers: { Authorization: `Bearer ${workerToken.value}` },
+        body: {
+          userId: Number(userId.value),
+          data: formData,
+          finalize: isFinal,
+        },
+      }
+    );
     if (isFinal) {
       showAlert("¡Éxito!", "Formulario enviado correctamente.", false, () => {
         userId.value = null;
@@ -346,11 +353,14 @@ async function executeSave() {
 async function saveAndExit() {
   saving.value = true;
   try {
-    await $fetch("https://pybingenieriachile.cl/api-seguro/api/submissions/save", {
-      method: "POST",
-      headers: { Authorization: `Bearer ${workerToken.value}` },
-      body: { userId: Number(userId.value), data: formData, finalize: false },
-    });
+    await $fetch(
+      "https://pybingenieriachile.cl/api-seguro/api/submissions/save",
+      {
+        method: "POST",
+        headers: { Authorization: `Bearer ${workerToken.value}` },
+        body: { userId: Number(userId.value), data: formData, finalize: false },
+      }
+    );
     showAlert(
       "Progreso Guardado",
       "Puedes volver con tu RUT cuando quieras.",
@@ -585,12 +595,6 @@ watch(currentStep, async (newStep) => {
               >
                 2. Datos de las Cargas
               </h2>
-              <button
-                @click="addDependent"
-                class="bg-blue-900 text-white text-[10px] font-bold px-4 py-2 rounded-full hover:bg-blue-800 transition-all shadow-md"
-              >
-                + AGREGAR OTRA CARGA
-              </button>
             </div>
 
             <div
@@ -650,7 +654,12 @@ watch(currentStep, async (newStep) => {
               <div class="grid grid-cols-2 gap-4">
                 <div>
                   <label class="label-style">Edad *</label>
-                  <input v-model="dep.edad" type="number" class="input-style" />
+                  <input
+                    v-model="dep.edad"
+                    type="text"
+                    class="input-style"
+                    placeholder="Ej: 6 meses, 2 semanas o 5 años"
+                  />
                 </div>
                 <div>
                   <label class="label-style">Parentesco *</label>
@@ -714,6 +723,13 @@ watch(currentStep, async (newStep) => {
               </div>
             </div>
           </div>
+          <br />
+          <button
+            @click="addDependent"
+            class="bg-blue-900 text-white text-[10px] font-bold px-4 py-2 rounded-full hover:bg-blue-800 transition-all shadow-md"
+          >
+            + AGREGAR OTRA CARGA
+          </button>
 
           <div v-if="currentStep === 3" class="space-y-6">
             <h2
