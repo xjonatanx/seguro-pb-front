@@ -179,7 +179,7 @@ const validateEditForm = () => {
 async function executeUpdate() {
   // 1. Ejecutamos la validación que creamos antes
   const validationError = validateEditForm(); // Esta función devuelve el string del error
-  
+
   if (validationError) {
     // Si hay error, disparamos el diálogo de Reka
     triggerError(validationError);
@@ -189,7 +189,7 @@ async function executeUpdate() {
   // 2. Si todo está OK, procedemos con el guardado
   isConfirmOpen.value = false;
   savingEdit.value = true;
-  
+
   try {
     await $fetch(
       `https://pybingenieriachile.cl/api-seguro/api/admin/submissions/${editForm.value.id}`,
@@ -272,6 +272,7 @@ const formatRut = (v: string) => {
     c.slice(0, -1).replace(/\B(?=(\d{3})+(?!\d))/g, ".") + "-" + c.slice(-1)
   );
 };
+
 watch(
   () => loginForm.rut,
   (n) => (loginForm.rut = formatRut(n))
@@ -607,7 +608,9 @@ async function executeDelete() {
                   <label class="label-style">RUT</label
                   ><input
                     v-model="editForm.workerRut"
-                    placeholder="12.345.678-9"
+                    @input="editForm.workerRut = formatRut(($event.target as HTMLInputElement).value)"
+                    placeholder="22.345.678-9"
+                    maxlength="12"
                     class="input-edit"
                   />
                 </div>
@@ -653,13 +656,6 @@ async function executeDelete() {
                 >
                   2. Datos de las Cargas Familiares
                 </h3>
-                <button
-                  @click="addEditDependent"
-                  type="button"
-                  class="text-[9px] font-black bg-blue-50 text-blue-700 px-3 py-1 rounded-full hover:bg-blue-100 transition-colors"
-                >
-                  + AÑADIR CARGA
-                </button>
               </div>
 
               <div class="space-y-8">
@@ -709,6 +705,8 @@ async function executeDelete() {
                       <label class="label-style">RUT Carga</label>
                       <input
                         v-model="dep.rut"
+                        @input="dep.rut = formatRut(($event.target as HTMLInputElement).value)"
+                        maxlength="12"
                         placeholder="20.123.456-K"
                         class="input-edit"
                       />
@@ -800,6 +798,14 @@ async function executeDelete() {
                   </div>
                 </div>
               </div>
+              <br>
+              <button
+                @click="addEditDependent"
+                type="button"
+                class="text-[11px] font-black bg-blue-50 text-blue-700 px-3 py-2 rounded-full hover:bg-blue-100 transition-colors"
+              >
+                + AÑADIR CARGA
+              </button>
             </section>
 
             <section>

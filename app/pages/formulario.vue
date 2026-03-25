@@ -41,6 +41,22 @@ const tiposCuenta = [
   "Cuenta de Ahorro",
 ];
 
+const formatRut = (value: string) => {
+  // Limpiar puntos, guiones y cualquier cosa que no sea número o 'k'
+  let rut = value.replace(/[^\dKk]/g, "").toUpperCase();
+
+  if (rut.length <= 1) return rut;
+
+  // Separar el dígito verificador del cuerpo
+  const dv = rut.slice(-1);
+  let cuerpo = rut.slice(0, -1);
+
+  // Formatear con puntos
+  cuerpo = cuerpo.replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+
+  return `${cuerpo}-${dv}`;
+};
+
 // --- LÓGICA DE LA FIRMA (Canvas) ---
 const signaturePad = ref<HTMLCanvasElement | null>(null);
 let isDrawing = false;
@@ -540,11 +556,13 @@ watch(currentStep, async (newStep) => {
               </div>
               <div class="grid grid-cols-2 gap-4">
                 <div>
-                  <label class="label-style">RUT *</label
-                  ><input
-                    v-model="formData.worker.rut"
+                  <label class="label-style">RUT *</label>
+                  <input
+                    :value="formData.worker.rut"
+                    @input="formData.worker.rut = formatRut(($event.target as HTMLInputElement).value)"
                     class="input-style"
                     placeholder="12.345.678-9"
+                    maxlength="12"
                   />
                 </div>
                 <div>
@@ -636,9 +654,11 @@ watch(currentStep, async (newStep) => {
                 <div>
                   <label class="label-style">RUT Carga *</label>
                   <input
-                    v-model="dep.rut"
+                    :value="dep.rut"
+                    @input="dep.rut = formatRut(($event.target as HTMLInputElement).value)"
                     class="input-style"
                     placeholder="22.345.678-9"
+                    maxlength="12"
                   />
                 </div>
                 <div>
