@@ -742,14 +742,13 @@ watch(currentStep, async (newStep) => {
                 </div>
               </div>
             </div>
+            <button
+                @click="addDependent"
+                class="bg-blue-900 text-white text-[10px] font-bold px-4 py-2 rounded-full hover:bg-blue-800 transition-all shadow-md"
+            >
+                + AGREGAR OTRA CARGA
+            </button>
           </div>
-          <br />
-          <button
-            @click="addDependent"
-            class="bg-blue-900 text-white text-[10px] font-bold px-4 py-2 rounded-full hover:bg-blue-800 transition-all shadow-md"
-          >
-            + AGREGAR OTRA CARGA
-          </button>
 
           <div v-if="currentStep === 3" class="space-y-6">
             <h2
